@@ -12,9 +12,13 @@ import (
 	"os/signal"
 	"syscall"
 
+	botapp "github.com/yourname/booking-bot/internal/bot"
+	"github.com/yourname/booking-bot/internal/bot/handlers"
 	"github.com/yourname/booking-bot/internal/config"
 	"github.com/yourname/booking-bot/internal/database"
 	"github.com/yourname/booking-bot/internal/logger"
+	"github.com/yourname/booking-bot/internal/repository"
+	"github.com/yourname/booking-bot/internal/service"
 )
 
 func main() {
@@ -61,11 +65,20 @@ func run() error {
 	}()
 	log.Info("connected to redis")
 
-	log.Info("booking-bot is up, waiting for shutdown signal")
+	userRepo := repository.NewUserRepository(pgPool)
+	userService := service.NewUserService(userRepo, log)
+	h := handlers.New(userService, log)
 
-	<-ctx.Done()
+	tgBot, err := botapp.New(cfg.BotToken, h, log)
+	if err != nil {
+		return err
+	}
 
-	log.Info("shutdown signal received, stopping gracefully")
+	// Blocks (long polling) until ctx is cancelled by SIGINT/SIGTERM, then
+	// returns so the deferred pool/redis cleanup above runs.
+	tgBot.Start(ctx)
+
+	log.Info("shutdown complete")
 
 	return nil
 }

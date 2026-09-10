@@ -61,10 +61,9 @@ func Load() (*Config, error) {
 	if cfg.RedisURL == "" {
 		return nil, fmt.Errorf("config: REDIS_URL is required")
 	}
-
-	// BOT_TOKEN is not validated as required yet: Telegram integration
-	// starts in Stage 2. It will become a hard requirement once
-	// internal/bot is wired into main.go.
+	if cfg.BotToken == "" {
+		return nil, fmt.Errorf("config: BOT_TOKEN is required")
+	}
 
 	return cfg, nil
 }
