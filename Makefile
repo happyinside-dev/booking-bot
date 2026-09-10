@@ -19,8 +19,10 @@ logs:
 	docker compose logs -f bot
 
 # Requires: go install github.com/pressly/goose/v3/cmd/goose@latest
+# Note: the app also applies these migrations automatically on startup
+# (see internal/database/migrate.go); these targets are for manual/local use.
 migrate-up:
-	goose -dir migrations postgres "$$DATABASE_URL" up
+	goose -dir internal/database/migrations postgres "$$DATABASE_URL" up
 
 migrate-down:
-	goose -dir migrations postgres "$$DATABASE_URL" down
+	goose -dir internal/database/migrations postgres "$$DATABASE_URL" down

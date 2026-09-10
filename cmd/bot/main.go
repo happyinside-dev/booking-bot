@@ -1,8 +1,8 @@
 // Command bot is the entrypoint of the booking Telegram bot.
 //
-// At this stage (Infrastructure) it only wires up configuration, logging,
-// and connections to PostgreSQL and Redis, then waits for a shutdown
-// signal. Telegram integration is added in Stage 2.
+// On startup it: loads configuration, applies pending database migrations,
+// connects to PostgreSQL and Redis, wires up the user service and Telegram
+// handlers, then runs the bot's long-polling loop until SIGINT/SIGTERM.
 package main
 
 import (
@@ -46,6 +46,11 @@ func run() error {
 	// graceful shutdown wired up fully in a later stage.
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	if err := database.RunMigrations(cfg.DatabaseURL); err != nil {
+		return err
+	}
+	log.Info("migrations applied")
 
 	pgPool, err := database.NewPostgresPool(ctx, cfg.DatabaseURL)
 	if err != nil {

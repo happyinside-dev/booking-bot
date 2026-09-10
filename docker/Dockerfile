@@ -19,6 +19,5 @@ RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
 COPY --from=builder /out/bot /app/bot
-COPY migrations /app/migrations
 
 ENTRYPOINT ["/app/bot"]

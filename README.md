@@ -25,6 +25,7 @@ docker compose up --build
 
 ```
 starting booking-bot ...
+migrations applied
 connected to postgres
 connected to redis
 telegram bot started (long polling)
@@ -55,14 +56,27 @@ make run
 
 ## Миграции (goose)
 
+Приложение **автоматически применяет все миграции при старте**
+(`internal/database/migrate.go`, файлы встроены в бинарник через
+`embed.FS` из `internal/database/migrations`) — отдельный шаг не нужен ни
+локально, ни в Docker.
+
+Для ручного управления (например, чтобы применить/откатить миграции без
+запуска бота) можно использовать CLI:
+
 ```bash
 go install github.com/pressly/goose/v3/cmd/goose@latest
 export DATABASE_URL=postgres://booking:booking@localhost:5432/booking?sslmode=disable
 make migrate-up
+make migrate-down
 ```
 
-На этом этапе единственная миграция включает расширение `btree_gist`,
-которое понадобится в Этапе 6 для защиты от race condition при бронировании.
+На этом этапе миграции: `btree_gist` (понадобится в Этапе 6 для защиты от
+race condition при бронировании) и таблица `users`.
+
+> Осознанный компромисс: автоприменение на каждом старте — нормально для
+> одного инстанса бота. При нескольких репликах в проде миграции обычно
+> запускают отдельным job/init-шагом, а не из каждого процесса параллельно.
 
 ## Дальше — Этап 3
 
