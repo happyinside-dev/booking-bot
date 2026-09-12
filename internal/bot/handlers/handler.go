@@ -15,12 +15,22 @@ import (
 )
 
 type Handler struct {
-	userService *service.UserService
-	log         *slog.Logger
+	userService     *service.UserService
+	businessService *service.BusinessService
+	log             *slog.Logger
 }
 
-func New(userService *service.UserService, log *slog.Logger) *Handler {
-	return &Handler{userService: userService, log: log}
+func New(
+	userService *service.UserService,
+	businessService *service.BusinessService,
+	log *slog.Logger,
+) *Handler {
+
+	return &Handler{
+		userService:     userService,
+		businessService: businessService,
+		log:             log,
+	}
 }
 
 // Start handles the /start command: registers or refreshes the user, then

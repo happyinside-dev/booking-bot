@@ -9,6 +9,14 @@ package apperr
 import "errors"
 
 var (
-	// ErrNotFound is returned when a requested entity does not exist.
-	ErrNotFound = errors.New("not found")
+	ErrNotFound  = errors.New("not found")
+	ErrForbidden = errors.New("forbidden")
+
+	// Ошибки бронирования (понадобятся на следующих этапах)
+	ErrBookingConflict         = errors.New("booking conflict")
+	ErrInvalidTime             = errors.New("invalid time")
+	ErrServiceInactive         = errors.New("service inactive")
+	ErrEmployeeInactive        = errors.New("employee inactive")
+	ErrBookingAlreadyCancelled = errors.New("booking already cancelled")
+	ErrBookingAlreadyStarted   = errors.New("booking already started")
 )

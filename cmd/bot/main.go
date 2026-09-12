@@ -72,8 +72,21 @@ func run() error {
 
 	userRepo := repository.NewUserRepository(pgPool)
 	userService := service.NewUserService(userRepo, log)
-	h := handlers.New(userService, log)
 
+	businessRepo := repository.NewBusinessRepository(pgPool)
+	memberRepo := repository.NewBusinessMemberRepository(pgPool)
+
+	businessService := service.NewBusinessService(
+		businessRepo,
+		memberRepo,
+		log,
+	)
+
+	h := handlers.New(
+		userService,
+		businessService,
+		log,
+	)
 	tgBot, err := botapp.New(cfg.BotToken, h, log)
 	if err != nil {
 		return err
