@@ -12,13 +12,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	botapp "github.com/yourname/booking-bot/internal/bot"
-	"github.com/yourname/booking-bot/internal/bot/handlers"
-	"github.com/yourname/booking-bot/internal/config"
-	"github.com/yourname/booking-bot/internal/database"
-	"github.com/yourname/booking-bot/internal/logger"
-	"github.com/yourname/booking-bot/internal/repository"
-	"github.com/yourname/booking-bot/internal/service"
+	botapp "github.com/happyinside-dev/booking-bot/internal/bot"
+	"github.com/happyinside-dev/booking-bot/internal/bot/handlers"
+	"github.com/happyinside-dev/booking-bot/internal/config"
+	"github.com/happyinside-dev/booking-bot/internal/database"
+	"github.com/happyinside-dev/booking-bot/internal/logger"
+	"github.com/happyinside-dev/booking-bot/internal/repository"
+	"github.com/happyinside-dev/booking-bot/internal/service"
 )
 
 func main() {

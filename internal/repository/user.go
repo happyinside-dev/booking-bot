@@ -8,8 +8,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/yourname/booking-bot/internal/apperr"
-	"github.com/yourname/booking-bot/internal/model"
+	"github.com/happyinside-dev/booking-bot/internal/apperr"
+	"github.com/happyinside-dev/booking-bot/internal/model"
 )
 
 // UserRepository provides access to the users table. It knows nothing about

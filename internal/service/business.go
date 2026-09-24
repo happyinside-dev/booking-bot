@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/yourname/booking-bot/internal/apperr"
-	"github.com/yourname/booking-bot/internal/model"
+	"github.com/happyinside-dev/booking-bot/internal/apperr"
+	"github.com/happyinside-dev/booking-bot/internal/model"
 )
 
 type businessRepository interface {

@@ -5,13 +5,16 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 
-	"github.com/yourname/booking-bot/internal/bot/keyboards"
-	"github.com/yourname/booking-bot/internal/service"
+	"github.com/happyinside-dev/booking-bot/internal/apperr"
+	"github.com/happyinside-dev/booking-bot/internal/bot/keyboards"
+	"github.com/happyinside-dev/booking-bot/internal/model"
+	"github.com/happyinside-dev/booking-bot/internal/service"
 )
 
 type Handler struct {
@@ -76,5 +79,53 @@ func (h *Handler) Default(ctx context.Context, b *bot.Bot, update *models.Update
 func (h *Handler) sendText(ctx context.Context, b *bot.Bot, chatID int64, text string) {
 	if _, err := b.SendMessage(ctx, &bot.SendMessageParams{ChatID: chatID, Text: text}); err != nil {
 		h.log.Error("failed to send message", slog.Any("error", err), slog.Int64("chat_id", chatID))
+	}
+}
+
+func (h *Handler) Admin(ctx context.Context, b *bot.Bot, update *models.Update) {
+
+	if update.Message == nil {
+		return
+	}
+
+	user, err := h.userService.GetByTelegramID(ctx, update.Message.From.ID)
+	if err != nil {
+		h.sendText(ctx, b, update.Message.Chat.ID, "❌ Пользователь не найден.")
+		return
+	}
+
+	businessID, err := h.businessService.FirstBusiness(ctx, user.ID)
+	if err != nil {
+		h.sendText(ctx, b, update.Message.Chat.ID, "❌ У вас нет бизнеса.")
+		return
+	}
+
+	err = h.businessService.HasRole(
+		ctx,
+		businessID,
+		user.ID,
+		model.RoleOwner,
+		model.RoleAdmin,
+	)
+
+	if err != nil {
+		if errors.Is(err, apperr.ErrForbidden) {
+			h.sendText(ctx, b, update.Message.Chat.ID, "❌ У вас нет доступа к административному меню.")
+			return
+		}
+
+		h.log.Error("failed to check role", slog.Any("error", err))
+		h.sendText(ctx, b, update.Message.Chat.ID, "Произошла ошибка.")
+		return
+	}
+
+	_, err = b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID:      update.Message.Chat.ID,
+		Text:        "🔧 Панель администратора",
+		ReplyMarkup: keyboards.AdminKeyboard(),
+	})
+
+	if err != nil {
+		h.log.Error("failed to send admin menu", slog.Any("error", err))
 	}
 }

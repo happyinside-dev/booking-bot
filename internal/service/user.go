@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/yourname/booking-bot/internal/apperr"
-	"github.com/yourname/booking-bot/internal/model"
+	"github.com/happyinside-dev/booking-bot/internal/apperr"
+	"github.com/happyinside-dev/booking-bot/internal/model"
 )
 
 // userRepository is the subset of repository.UserRepository this service
@@ -100,4 +100,13 @@ func strPtrEqual(p *string, s string) bool {
 		return s == ""
 	}
 	return *p == s
+}
+
+func (s *UserService) GetByTelegramID(ctx context.Context, telegramID int64) (*model.User, error) {
+	user, err := s.repo.GetByTelegramID(ctx, telegramID)
+	if err != nil {
+		return nil, fmt.Errorf("service: get user by telegram id: %w", err)
+	}
+
+	return user, nil
 }

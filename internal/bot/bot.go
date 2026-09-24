@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-telegram/bot"
 
-	"github.com/yourname/booking-bot/internal/bot/handlers"
+	"github.com/happyinside-dev/booking-bot/internal/bot/handlers"
 )
 
 type Bot struct {
@@ -27,6 +27,7 @@ func New(token string, h *handlers.Handler, log *slog.Logger) (*Bot, error) {
 	}
 
 	api.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, h.Start)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "/admin", bot.MatchTypeExact, h.Admin)
 
 	app.api = api
 	return app, nil
