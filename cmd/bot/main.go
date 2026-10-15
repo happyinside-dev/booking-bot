@@ -100,6 +100,7 @@ func run() error {
 	scheduleService := service.NewScheduleService(businessRepo, serviceRepo, employeeRepo, scheduleRepo, businessService)
 	bookingRepo := repository.NewBookingRepository(pgPool)
 	bookingService := service.NewBookingService(bookingRepo, scheduleService, serviceRepo, employeeRepo, userRepo, businessRepo)
+	statisticsService := service.NewStatisticsService(repository.NewStatisticsRepository(pgPool), businessRepo, businessService)
 
 	type configuredBot struct {
 		id, businessID  int64
@@ -138,7 +139,7 @@ func run() error {
 		stateStore := fsm.NewRedisStore(redisClient, 30*time.Minute, strconv.FormatInt(item.id, 10))
 		h := handlers.New(
 			handlers.BotContext{BotID: item.id, BusinessID: item.businessID, Username: item.username},
-			userService, businessService, catalogService, employeeService, scheduleService, bookingService, stateStore, log,
+			userService, businessService, catalogService, employeeService, scheduleService, bookingService, statisticsService, stateStore, log,
 		)
 		tgBot, err := botapp.New(item.token, h, log.With(slog.Int64("bot_id", item.id), slog.Int64("business_id", item.businessID)))
 		if err != nil {

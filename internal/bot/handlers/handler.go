@@ -19,15 +19,16 @@ import (
 )
 
 type Handler struct {
-	botContext      BotContext
-	userService     *service.UserService
-	businessService *service.BusinessService
-	catalogService  *service.CatalogService
-	employeeService *service.EmployeeService
-	scheduleService *service.ScheduleService
-	bookingService  *service.BookingService
-	states          fsm.Store
-	log             *slog.Logger
+	botContext        BotContext
+	userService       *service.UserService
+	businessService   *service.BusinessService
+	catalogService    *service.CatalogService
+	employeeService   *service.EmployeeService
+	scheduleService   *service.ScheduleService
+	bookingService    *service.BookingService
+	statisticsService *service.StatisticsService
+	states            fsm.Store
+	log               *slog.Logger
 }
 
 type BotContext struct {
@@ -43,20 +44,22 @@ func New(
 	employeeService *service.EmployeeService,
 	scheduleService *service.ScheduleService,
 	bookingService *service.BookingService,
+	statisticsService *service.StatisticsService,
 	states fsm.Store,
 	log *slog.Logger,
 ) *Handler {
 
 	return &Handler{
-		botContext:      botContext,
-		userService:     userService,
-		businessService: businessService,
-		catalogService:  catalogService,
-		employeeService: employeeService,
-		scheduleService: scheduleService,
-		bookingService:  bookingService,
-		states:          states,
-		log:             log,
+		botContext:        botContext,
+		userService:       userService,
+		businessService:   businessService,
+		catalogService:    catalogService,
+		employeeService:   employeeService,
+		scheduleService:   scheduleService,
+		bookingService:    bookingService,
+		statisticsService: statisticsService,
+		states:            states,
+		log:               log,
 	}
 }
 

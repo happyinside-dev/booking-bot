@@ -46,6 +46,11 @@ func New(token string, h *handlers.Handler, log *slog.Logger) (*Bot, error) {
 	api.RegisterHandler(bot.HandlerTypeMessageText, "🔙 Главное меню", bot.MatchTypeExact, h.MainMenu)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "📅 Записи сегодня", bot.MatchTypeExact, h.AdminToday)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "📆 Все записи", bot.MatchTypeExact, h.AdminAll)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📊 Статистика", bot.MatchTypeExact, h.StatisticsMenu)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📊 Сегодня", bot.MatchTypeExact, h.StatisticsToday)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📊 7 дней", bot.MatchTypeExact, h.Statistics7Days)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📊 30 дней", bot.MatchTypeExact, h.Statistics30Days)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📊 Всё время", bot.MatchTypeExact, h.StatisticsAll)
 
 	app.api = api
 	return app, nil
@@ -62,6 +67,8 @@ func (b *Bot) Start(ctx context.Context) {
 
 func (b *Bot) SendText(ctx context.Context, chatID int64, text string) error {
 	_, err := b.api.SendMessage(ctx, &bot.SendMessageParams{ChatID: chatID, Text: text})
-	if err != nil { return fmt.Errorf("telegram: send message: %w", err) }
+	if err != nil {
+		return fmt.Errorf("telegram: send message: %w", err)
+	}
 	return nil
 }
