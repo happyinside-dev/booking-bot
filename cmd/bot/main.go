@@ -7,9 +7,12 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strconv"
+	"sync"
 	"syscall"
 	"time"
 
@@ -94,25 +97,54 @@ func run() error {
 	catalogService := service.NewCatalogService(serviceRepo, businessService)
 	employeeService := service.NewEmployeeService(employeeRepo, businessService)
 	scheduleService := service.NewScheduleService(businessRepo, serviceRepo, employeeRepo, scheduleRepo, businessService)
-	stateStore := fsm.NewRedisStore(redisClient, 30*time.Minute)
+	bookingRepo := repository.NewBookingRepository(pgPool)
+	bookingService := service.NewBookingService(bookingRepo, scheduleService, serviceRepo, employeeRepo, userRepo, businessRepo)
 
-	h := handlers.New(
-		userService,
-		businessService,
-		catalogService,
-		employeeService,
-		scheduleService,
-		stateStore,
-		log,
-	)
-	tgBot, err := botapp.New(cfg.BotToken, h, log)
-	if err != nil {
-		return err
+	type configuredBot struct {
+		id, businessID  int64
+		username, token string
+	}
+	var configured []configuredBot
+	if len(cfg.BotTokens) > 0 {
+		items, err := repository.NewBusinessBotRepository(pgPool).ListActive(ctx)
+		if err != nil {
+			return err
+		}
+		for _, item := range items {
+			token, ok := cfg.BotTokens[item.TokenKey]
+			if !ok || token == "" {
+				return fmt.Errorf("missing token for active business bot %q", item.TokenKey)
+			}
+			configured = append(configured, configuredBot{id: item.ID, businessID: item.BusinessID, username: item.Username, token: token})
+		}
+		if len(configured) == 0 {
+			return fmt.Errorf("no active business bots configured")
+		}
+	} else {
+		configured = append(configured, configuredBot{id: cfg.BotBusinessID, businessID: cfg.BotBusinessID, token: cfg.BotToken})
 	}
 
-	// Blocks (long polling) until ctx is cancelled by SIGINT/SIGTERM, then
-	// returns so the deferred pool/redis cleanup above runs.
-	tgBot.Start(ctx)
+	bots := make([]*botapp.Bot, 0, len(configured))
+	for _, item := range configured {
+		stateStore := fsm.NewRedisStore(redisClient, 30*time.Minute, strconv.FormatInt(item.id, 10))
+		h := handlers.New(
+			handlers.BotContext{BotID: item.id, BusinessID: item.businessID, Username: item.username},
+			userService, businessService, catalogService, employeeService, scheduleService, bookingService, stateStore, log,
+		)
+		tgBot, err := botapp.New(item.token, h, log.With(slog.Int64("bot_id", item.id), slog.Int64("business_id", item.businessID)))
+		if err != nil {
+			return err
+		}
+		bots = append(bots, tgBot)
+	}
+
+	var wg sync.WaitGroup
+	for _, tgBot := range bots {
+		wg.Add(1)
+		go func() { defer wg.Done(); tgBot.Start(ctx) }()
+	}
+	<-ctx.Done()
+	wg.Wait()
 
 	log.Info("shutdown complete")
 

@@ -11,9 +11,9 @@ import (
 // Config holds all runtime configuration for the application.
 type Config struct {
 	// Telegram
-	BotToken string
+	BotToken      string
 	BotBusinessID int64
-	BotTokens map[string]string
+	BotTokens     map[string]string
 
 	// Infrastructure
 	DatabaseURL string
@@ -48,7 +48,9 @@ func Load() (*Config, error) {
 	}
 	if raw := os.Getenv("BOT_BUSINESS_ID"); raw != "" {
 		cfg.BotBusinessID, err = strconv.ParseInt(raw, 10, 64)
-		if err != nil || cfg.BotBusinessID <= 0 { return nil, fmt.Errorf("config: BOT_BUSINESS_ID must be a positive integer") }
+		if err != nil || cfg.BotBusinessID <= 0 {
+			return nil, fmt.Errorf("config: BOT_BUSINESS_ID must be a positive integer")
+		}
 	}
 
 	cfg.DefaultSlotIntervalMin, err = getEnvIntDefault("DEFAULT_SLOT_INTERVAL", 30)

@@ -51,11 +51,29 @@ func (r *ScheduleRepository) GetWorkingHours(ctx context.Context, employeeID int
 }
 
 func (r *ScheduleRepository) CreateBlockedSlot(ctx context.Context, slot *model.BlockedSlot) (*model.BlockedSlot, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("repository: begin blocked slot: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, slot.EmployeeID); err != nil {
+		return nil, fmt.Errorf("repository: lock employee: %w", err)
+	}
+	var conflict bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM bookings WHERE employee_id=$1 AND status IN ('PENDING','CONFIRMED') AND start_at < $3 AND end_at > $2)`, slot.EmployeeID, slot.StartAt, slot.EndAt).Scan(&conflict); err != nil {
+		return nil, fmt.Errorf("repository: check bookings for blocked slot: %w", err)
+	}
+	if conflict {
+		return nil, apperr.ErrBookingConflict
+	}
 	const q = `
 		INSERT INTO blocked_slots (employee_id, start_at, end_at, reason)
 		VALUES ($1, $2, $3, NULLIF($4, '')) RETURNING id, created_at`
-	if err := r.pool.QueryRow(ctx, q, slot.EmployeeID, slot.StartAt, slot.EndAt, slot.Reason).Scan(&slot.ID, &slot.CreatedAt); err != nil {
+	if err := tx.QueryRow(ctx, q, slot.EmployeeID, slot.StartAt, slot.EndAt, slot.Reason).Scan(&slot.ID, &slot.CreatedAt); err != nil {
 		return nil, fmt.Errorf("repository: create blocked slot: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("repository: commit blocked slot: %w", err)
 	}
 	return slot, nil
 }
@@ -64,8 +82,11 @@ func (r *ScheduleRepository) CreateBlockedSlot(ctx context.Context, slot *model.
 // added to this query in stage 6, after the bookings table is introduced.
 func (r *ScheduleRepository) ListBusyIntervals(ctx context.Context, employeeID int64, from, to time.Time) ([]model.TimeInterval, error) {
 	const q = `
-		SELECT start_at, end_at FROM blocked_slots
-		WHERE employee_id = $1 AND start_at < $3 AND end_at > $2
+		SELECT start_at, end_at FROM (
+			SELECT start_at, end_at FROM blocked_slots WHERE employee_id=$1 AND start_at<$3 AND end_at>$2
+			UNION ALL
+			SELECT start_at, end_at FROM bookings WHERE employee_id=$1 AND status IN ('PENDING','CONFIRMED') AND start_at<$3 AND end_at>$2
+		) busy
 		ORDER BY start_at, end_at`
 	rows, err := r.pool.Query(ctx, q, employeeID, from, to)
 	if err != nil {

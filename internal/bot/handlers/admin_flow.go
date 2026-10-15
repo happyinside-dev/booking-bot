@@ -162,7 +162,13 @@ func (h *Handler) handleState(ctx context.Context, b *bot.Bot, update *models.Up
 		h.adminError(ctx, b, update.Message.Chat.ID, err)
 		return true
 	}
-	admin, err := h.adminContext(ctx, update.Message.From.ID)
+	var admin *adminContext
+	var business *model.Business
+	if state.Flow == flowBooking || state.Flow == flowBookingCancel {
+		business, err = h.businessService.GetByID(ctx, h.botContext.BusinessID)
+	} else {
+		admin, err = h.adminContext(ctx, update.Message.From.ID)
+	}
 	if err != nil {
 		_ = h.states.Delete(ctx, update.Message.From.ID)
 		h.adminError(ctx, b, update.Message.Chat.ID, err)
@@ -184,24 +190,38 @@ func (h *Handler) handleState(ctx context.Context, b *bot.Bot, update *models.Up
 		prompt, done, err = h.scheduleForm(ctx, state, admin, text)
 	case flowBlocked:
 		prompt, done, err = h.blockedForm(ctx, state, admin, text)
+	case flowBooking, flowBookingCancel:
+		prompt, done, err = h.bookingForm(ctx, state, business, update.Message.From.ID, text)
 	default:
 		_ = h.states.Delete(ctx, update.Message.From.ID)
 		return false
 	}
 	if err != nil {
-		h.sendText(ctx, b, update.Message.Chat.ID, humanAdminError(err))
+		if state.Flow == flowBooking || state.Flow == flowBookingCancel {
+			h.sendText(ctx, b, update.Message.Chat.ID, bookingError(err))
+		} else {
+			h.sendText(ctx, b, update.Message.Chat.ID, humanAdminError(err))
+		}
 		return true
 	}
 	if done {
 		_ = h.states.Delete(ctx, update.Message.From.ID)
-		h.sendWithKeyboard(ctx, b, update.Message.Chat.ID, prompt, keyboards.AdminKeyboard())
+		keyboard := keyboards.AdminKeyboard()
+		if state.Flow == flowBooking || state.Flow == flowBookingCancel {
+			keyboard = keyboards.MainMenu()
+		}
+		h.sendWithKeyboard(ctx, b, update.Message.Chat.ID, prompt, keyboard)
 		return true
 	}
 	if err := h.states.Set(ctx, update.Message.From.ID, state); err != nil {
 		h.adminError(ctx, b, update.Message.Chat.ID, err)
 		return true
 	}
-	h.sendWithKeyboard(ctx, b, update.Message.Chat.ID, prompt, keyboards.CancelKeyboard())
+	keyboard := keyboards.CancelKeyboard()
+	if state.Flow == flowBooking && state.Step == "confirm" {
+		keyboard = keyboards.BookingConfirmKeyboard()
+	}
+	h.sendWithKeyboard(ctx, b, update.Message.Chat.ID, prompt, keyboard)
 	return true
 }
 

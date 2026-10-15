@@ -25,11 +25,15 @@ type Handler struct {
 	catalogService  *service.CatalogService
 	employeeService *service.EmployeeService
 	scheduleService *service.ScheduleService
+	bookingService  *service.BookingService
 	states          fsm.Store
 	log             *slog.Logger
 }
 
-type BotContext struct { BotID, BusinessID int64; Username string }
+type BotContext struct {
+	BotID, BusinessID int64
+	Username          string
+}
 
 func New(
 	botContext BotContext,
@@ -38,6 +42,7 @@ func New(
 	catalogService *service.CatalogService,
 	employeeService *service.EmployeeService,
 	scheduleService *service.ScheduleService,
+	bookingService *service.BookingService,
 	states fsm.Store,
 	log *slog.Logger,
 ) *Handler {
@@ -49,6 +54,7 @@ func New(
 		catalogService:  catalogService,
 		employeeService: employeeService,
 		scheduleService: scheduleService,
+		bookingService:  bookingService,
 		states:          states,
 		log:             log,
 	}

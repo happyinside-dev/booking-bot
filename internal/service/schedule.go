@@ -17,10 +17,12 @@ type scheduleBusinessRepository interface {
 
 type scheduleServiceRepository interface {
 	GetByID(ctx context.Context, id int64) (*model.Service, error)
+	ListByBusiness(ctx context.Context, businessID int64) ([]model.Service, error)
 }
 
 type scheduleEmployeeRepository interface {
 	GetByID(ctx context.Context, id int64) (*model.Employee, error)
+	ListByBusiness(ctx context.Context, businessID int64) ([]model.Employee, error)
 }
 
 type scheduleRepository interface {

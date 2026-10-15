@@ -40,6 +40,12 @@ func New(token string, h *handlers.Handler, log *slog.Logger) (*Bot, error) {
 	api.RegisterHandler(bot.HandlerTypeMessageText, "🚫 Заблокировать время", bot.MatchTypeExact, h.BeginBlocked)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "🔙 Админ меню", bot.MatchTypeExact, h.BackToAdmin)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "❌ Отмена", bot.MatchTypeExact, h.Cancel)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📅 Записаться", bot.MatchTypeExact, h.BeginBooking)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📋 Мои записи", bot.MatchTypeExact, h.MyBookings)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "❌ Отменить запись", bot.MatchTypeExact, h.BeginBookingCancel)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "🔙 Главное меню", bot.MatchTypeExact, h.MainMenu)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📅 Записи сегодня", bot.MatchTypeExact, h.AdminToday)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "📆 Все записи", bot.MatchTypeExact, h.AdminAll)
 
 	app.api = api
 	return app, nil
