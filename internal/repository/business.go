@@ -20,7 +20,15 @@ func NewBusinessRepository(pool *pgxpool.Pool) *BusinessRepository {
 	return &BusinessRepository{pool: pool}
 }
 
-func (r *BusinessRepository) Create(ctx context.Context, b *model.Business) (*model.Business, error) {
+// CreateWithOwner atomically creates a business and its OWNER membership.
+// A business without an owner is not a valid domain state.
+func (r *BusinessRepository) CreateWithOwner(ctx context.Context, b *model.Business, ownerUserID int64) (*model.Business, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("repository: begin create business: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	const q = `
 		INSERT INTO businesses (
 			name, description, address, timezone,
@@ -31,7 +39,7 @@ func (r *BusinessRepository) Create(ctx context.Context, b *model.Business) (*mo
 		RETURNING id, created_at, updated_at
 	`
 
-	err := r.pool.QueryRow(
+	err = tx.QueryRow(
 		ctx,
 		q,
 		b.Name,
@@ -49,6 +57,12 @@ func (r *BusinessRepository) Create(ctx context.Context, b *model.Business) (*mo
 
 	if err != nil {
 		return nil, fmt.Errorf("repository: create business: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO business_members (business_id,user_id,role) VALUES ($1,$2,$3)`, b.ID, ownerUserID, model.RoleOwner); err != nil {
+		return nil, fmt.Errorf("repository: add business owner: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("repository: commit create business: %w", err)
 	}
 
 	return b, nil

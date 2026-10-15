@@ -112,8 +112,13 @@ func (h *Handler) Cancel(ctx context.Context, b *bot.Bot, update *models.Update)
 	if update.Message == nil || update.Message.From == nil {
 		return
 	}
+	state, _ := h.states.Get(ctx, update.Message.From.ID)
 	_ = h.states.Delete(ctx, update.Message.From.ID)
-	h.sendWithKeyboard(ctx, b, update.Message.Chat.ID, "Действие отменено.", keyboards.AdminKeyboard())
+	keyboard := keyboards.AdminKeyboard()
+	if state != nil && (state.Flow == flowBooking || state.Flow == flowBookingCancel) {
+		keyboard = keyboards.MainMenu()
+	}
+	h.sendWithKeyboard(ctx, b, update.Message.Chat.ID, "Действие отменено.", keyboard)
 }
 
 func (h *Handler) BeginServiceCreate(ctx context.Context, b *bot.Bot, u *models.Update) {

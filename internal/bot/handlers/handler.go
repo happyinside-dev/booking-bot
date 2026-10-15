@@ -94,8 +94,7 @@ func (h *Handler) Start(ctx context.Context, b *bot.Bot, update *models.Update) 
 	}
 }
 
-// Default handles any update not matched by a more specific handler
-// (including the not-yet-implemented main menu buttons).
+// Default handles any update not matched by a more specific handler.
 func (h *Handler) Default(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if update.Message == nil || update.Message.From == nil {
 		return
@@ -103,7 +102,7 @@ func (h *Handler) Default(ctx context.Context, b *bot.Bot, update *models.Update
 	if h.handleState(ctx, b, update) {
 		return
 	}
-	h.sendText(ctx, b, update.Message.Chat.ID, "❗ Эта функция пока в разработке.")
+	h.sendWithKeyboard(ctx, b, update.Message.Chat.ID, "Не удалось распознать команду. Выберите действие в меню.", keyboards.MainMenu())
 }
 
 func (h *Handler) sendText(ctx context.Context, b *bot.Bot, chatID int64, text string) {

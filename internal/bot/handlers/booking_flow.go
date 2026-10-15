@@ -23,6 +23,51 @@ const (
 	flowBookingCancel = "booking_cancel"
 )
 
+func (h *Handler) PublicServices(ctx context.Context, b *bot.Bot, u *models.Update) {
+	if u.Message == nil {
+		return
+	}
+	items, err := h.bookingService.ListServices(ctx, h.botContext.BusinessID)
+	if err != nil {
+		h.adminError(ctx, b, u.Message.Chat.ID, err)
+		return
+	}
+	if len(items) == 0 {
+		h.sendWithKeyboard(ctx, b, u.Message.Chat.ID, "Сейчас нет доступных услуг.", keyboards.MainMenu())
+		return
+	}
+	var out strings.Builder
+	out.WriteString("💈 Наши услуги\n")
+	for _, item := range items {
+		fmt.Fprintf(&out, "\n%s — %d мин., %.2f ₽", item.Name, item.DurationMin, item.Price)
+		if item.Description != "" {
+			fmt.Fprintf(&out, "\n%s", item.Description)
+		}
+		out.WriteByte('\n')
+	}
+	h.sendWithKeyboard(ctx, b, u.Message.Chat.ID, strings.TrimSpace(out.String()), keyboards.MainMenu())
+}
+
+func (h *Handler) AboutBusiness(ctx context.Context, b *bot.Bot, u *models.Update) {
+	if u.Message == nil {
+		return
+	}
+	business, err := h.businessService.GetByID(ctx, h.botContext.BusinessID)
+	if err != nil {
+		h.adminError(ctx, b, u.Message.Chat.ID, err)
+		return
+	}
+	var out strings.Builder
+	fmt.Fprintf(&out, "ℹ️ %s", business.Name)
+	if business.Description != "" {
+		fmt.Fprintf(&out, "\n\n%s", business.Description)
+	}
+	if business.Address != "" {
+		fmt.Fprintf(&out, "\n\n📍 %s", business.Address)
+	}
+	h.sendWithKeyboard(ctx, b, u.Message.Chat.ID, out.String(), keyboards.MainMenu())
+}
+
 func (h *Handler) BeginBooking(ctx context.Context, b *bot.Bot, u *models.Update) {
 	if u.Message == nil || u.Message.From == nil {
 		return

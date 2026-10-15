@@ -5,13 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
+	"time"
 
 	"github.com/happyinside-dev/booking-bot/internal/apperr"
 	"github.com/happyinside-dev/booking-bot/internal/model"
 )
 
 type businessRepository interface {
-	Create(ctx context.Context, b *model.Business) (*model.Business, error)
+	CreateWithOwner(ctx context.Context, b *model.Business, ownerUserID int64) (*model.Business, error)
 	GetByID(ctx context.Context, id int64) (*model.Business, error)
 }
 
@@ -61,31 +63,28 @@ func (s *BusinessService) CreateBusiness(
 	ctx context.Context,
 	in CreateBusinessInput,
 ) (*model.Business, error) {
+	name := strings.TrimSpace(in.Name)
+	timezone := strings.TrimSpace(in.Timezone)
+	if name == "" || in.OwnerUserID <= 0 || s.defaults.SlotIntervalMin <= 0 || s.defaults.MinBookingNoticeMin < 0 || s.defaults.MaxBookingDays < 0 {
+		return nil, apperr.ErrInvalidInput
+	}
+	if _, err := time.LoadLocation(timezone); err != nil {
+		return nil, apperr.ErrInvalidTimezone
+	}
 
 	business := &model.Business{
-		Name:                in.Name,
-		Description:         in.Description,
-		Address:             in.Address,
-		Timezone:            in.Timezone,
+		Name:                name,
+		Description:         strings.TrimSpace(in.Description),
+		Address:             strings.TrimSpace(in.Address),
+		Timezone:            timezone,
 		SlotIntervalMin:     s.defaults.SlotIntervalMin,
 		MinBookingNoticeMin: s.defaults.MinBookingNoticeMin,
 		MaxBookingDays:      s.defaults.MaxBookingDays,
 	}
 
-	createdBusiness, err := s.businessRepo.Create(ctx, business)
+	createdBusiness, err := s.businessRepo.CreateWithOwner(ctx, business, in.OwnerUserID)
 	if err != nil {
 		return nil, fmt.Errorf("service: create business: %w", err)
-	}
-
-	member := &model.BusinessMember{
-		BusinessID: createdBusiness.ID,
-		UserID:     in.OwnerUserID,
-		Role:       model.RoleOwner,
-	}
-
-	_, err = s.memberRepo.Add(ctx, member)
-	if err != nil {
-		return nil, fmt.Errorf("service: add owner: %w", err)
 	}
 
 	s.log.Info(

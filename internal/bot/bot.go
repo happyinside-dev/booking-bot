@@ -28,7 +28,9 @@ func New(token string, h *handlers.Handler, log *slog.Logger) (*Bot, error) {
 
 	api.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, h.Start)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "/admin", bot.MatchTypeExact, h.Admin)
-	api.RegisterHandler(bot.HandlerTypeMessageText, "💈 Услуги", bot.MatchTypeExact, h.ServicesMenu)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "💈 Услуги", bot.MatchTypeExact, h.PublicServices)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "ℹ️ О компании", bot.MatchTypeExact, h.AboutBusiness)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "🛠 Услуги", bot.MatchTypeExact, h.ServicesMenu)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "👨‍💼 Сотрудники", bot.MatchTypeExact, h.EmployeesMenu)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "➕ Добавить услугу", bot.MatchTypeExact, h.BeginServiceCreate)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "✏️ Изменить услугу", bot.MatchTypeExact, h.BeginServiceUpdate)
