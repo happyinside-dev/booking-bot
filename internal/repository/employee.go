@@ -152,3 +152,4 @@ func (r *EmployeeRepository) Update(ctx context.Context, e *model.Employee) erro
 	return nil
 }
 
+// Delete is intentionally absent: employees are deactivated through IsActive.

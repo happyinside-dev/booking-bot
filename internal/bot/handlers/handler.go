@@ -12,26 +12,44 @@ import (
 	"github.com/go-telegram/bot/models"
 
 	"github.com/happyinside-dev/booking-bot/internal/apperr"
+	"github.com/happyinside-dev/booking-bot/internal/bot/fsm"
 	"github.com/happyinside-dev/booking-bot/internal/bot/keyboards"
 	"github.com/happyinside-dev/booking-bot/internal/model"
 	"github.com/happyinside-dev/booking-bot/internal/service"
 )
 
 type Handler struct {
+	botContext      BotContext
 	userService     *service.UserService
 	businessService *service.BusinessService
+	catalogService  *service.CatalogService
+	employeeService *service.EmployeeService
+	scheduleService *service.ScheduleService
+	states          fsm.Store
 	log             *slog.Logger
 }
 
+type BotContext struct { BotID, BusinessID int64; Username string }
+
 func New(
+	botContext BotContext,
 	userService *service.UserService,
 	businessService *service.BusinessService,
+	catalogService *service.CatalogService,
+	employeeService *service.EmployeeService,
+	scheduleService *service.ScheduleService,
+	states fsm.Store,
 	log *slog.Logger,
 ) *Handler {
 
 	return &Handler{
+		botContext:      botContext,
 		userService:     userService,
 		businessService: businessService,
+		catalogService:  catalogService,
+		employeeService: employeeService,
+		scheduleService: scheduleService,
+		states:          states,
 		log:             log,
 	}
 }
@@ -70,7 +88,10 @@ func (h *Handler) Start(ctx context.Context, b *bot.Bot, update *models.Update) 
 // Default handles any update not matched by a more specific handler
 // (including the not-yet-implemented main menu buttons).
 func (h *Handler) Default(ctx context.Context, b *bot.Bot, update *models.Update) {
-	if update.Message == nil {
+	if update.Message == nil || update.Message.From == nil {
+		return
+	}
+	if h.handleState(ctx, b, update) {
 		return
 	}
 	h.sendText(ctx, b, update.Message.Chat.ID, "❗ Эта функция пока в разработке.")
@@ -84,7 +105,7 @@ func (h *Handler) sendText(ctx context.Context, b *bot.Bot, chatID int64, text s
 
 func (h *Handler) Admin(ctx context.Context, b *bot.Bot, update *models.Update) {
 
-	if update.Message == nil {
+	if update.Message == nil || update.Message.From == nil {
 		return
 	}
 
@@ -94,11 +115,7 @@ func (h *Handler) Admin(ctx context.Context, b *bot.Bot, update *models.Update) 
 		return
 	}
 
-	businessID, err := h.businessService.FirstBusiness(ctx, user.ID)
-	if err != nil {
-		h.sendText(ctx, b, update.Message.Chat.ID, "❌ У вас нет бизнеса.")
-		return
-	}
+	businessID := h.botContext.BusinessID
 
 	err = h.businessService.HasRole(
 		ctx,

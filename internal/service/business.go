@@ -25,17 +25,26 @@ type BusinessService struct {
 	businessRepo businessRepository
 	memberRepo   businessMemberRepository
 	log          *slog.Logger
+	defaults     BusinessDefaults
+}
+
+type BusinessDefaults struct {
+	SlotIntervalMin     int
+	MinBookingNoticeMin int
+	MaxBookingDays      int
 }
 
 func NewBusinessService(
 	businessRepo businessRepository,
 	memberRepo businessMemberRepository,
 	log *slog.Logger,
+	defaults BusinessDefaults,
 ) *BusinessService {
 	return &BusinessService{
 		businessRepo: businessRepo,
 		memberRepo:   memberRepo,
 		log:          log,
+		defaults:     defaults,
 	}
 }
 
@@ -54,10 +63,13 @@ func (s *BusinessService) CreateBusiness(
 ) (*model.Business, error) {
 
 	business := &model.Business{
-		Name:        in.Name,
-		Description: in.Description,
-		Address:     in.Address,
-		Timezone:    in.Timezone,
+		Name:                in.Name,
+		Description:         in.Description,
+		Address:             in.Address,
+		Timezone:            in.Timezone,
+		SlotIntervalMin:     s.defaults.SlotIntervalMin,
+		MinBookingNoticeMin: s.defaults.MinBookingNoticeMin,
+		MaxBookingDays:      s.defaults.MaxBookingDays,
 	}
 
 	createdBusiness, err := s.businessRepo.Create(ctx, business)
@@ -153,4 +165,12 @@ func (s *BusinessService) FirstBusiness(
 	}
 
 	return businesses[0], nil
+}
+
+func (s *BusinessService) GetByID(ctx context.Context, id int64) (*model.Business, error) {
+	business, err := s.businessRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("service: get business: %w", err)
+	}
+	return business, nil
 }

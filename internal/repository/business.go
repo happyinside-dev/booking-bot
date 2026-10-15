@@ -22,8 +22,12 @@ func NewBusinessRepository(pool *pgxpool.Pool) *BusinessRepository {
 
 func (r *BusinessRepository) Create(ctx context.Context, b *model.Business) (*model.Business, error) {
 	const q = `
-		INSERT INTO businesses (name, description, address, timezone, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, now(), now())
+		INSERT INTO businesses (
+			name, description, address, timezone,
+			slot_interval_min, min_booking_notice_min, max_booking_days,
+			created_at, updated_at
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
 		RETURNING id, created_at, updated_at
 	`
 
@@ -34,6 +38,9 @@ func (r *BusinessRepository) Create(ctx context.Context, b *model.Business) (*mo
 		b.Description,
 		b.Address,
 		b.Timezone,
+		b.SlotIntervalMin,
+		b.MinBookingNoticeMin,
+		b.MaxBookingDays,
 	).Scan(
 		&b.ID,
 		&b.CreatedAt,
@@ -49,7 +56,9 @@ func (r *BusinessRepository) Create(ctx context.Context, b *model.Business) (*mo
 
 func (r *BusinessRepository) GetByID(ctx context.Context, id int64) (*model.Business, error) {
 	const q = `
-		SELECT id, name, description, address, timezone, created_at, updated_at
+		SELECT id, name, description, address, timezone,
+		       slot_interval_min, min_booking_notice_min, max_booking_days,
+		       created_at, updated_at
 		FROM businesses
 		WHERE id = $1
 	`
@@ -62,6 +71,9 @@ func (r *BusinessRepository) GetByID(ctx context.Context, id int64) (*model.Busi
 		&b.Description,
 		&b.Address,
 		&b.Timezone,
+		&b.SlotIntervalMin,
+		&b.MinBookingNoticeMin,
+		&b.MaxBookingDays,
 		&b.CreatedAt,
 		&b.UpdatedAt,
 	)

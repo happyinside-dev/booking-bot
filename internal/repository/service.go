@@ -156,3 +156,6 @@ func (r *ServiceRepository) Update(ctx context.Context, s *model.Service) error 
 
 	return nil
 }
+
+// Delete is intentionally absent: services are retained for booking history
+// and deactivated through IsActive instead.

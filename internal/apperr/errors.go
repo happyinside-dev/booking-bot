@@ -9,8 +9,11 @@ package apperr
 import "errors"
 
 var (
-	ErrNotFound  = errors.New("not found")
-	ErrForbidden = errors.New("forbidden")
+	ErrNotFound        = errors.New("not found")
+	ErrForbidden       = errors.New("forbidden")
+	ErrInvalidSchedule = errors.New("invalid schedule")
+	ErrInvalidTimezone = errors.New("invalid timezone")
+	ErrInvalidInput    = errors.New("invalid input")
 
 	// Ошибки бронирования (понадобятся на следующих этапах)
 	ErrBookingConflict         = errors.New("booking conflict")

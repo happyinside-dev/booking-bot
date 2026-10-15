@@ -11,8 +11,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	botapp "github.com/happyinside-dev/booking-bot/internal/bot"
+	"github.com/happyinside-dev/booking-bot/internal/bot/fsm"
 	"github.com/happyinside-dev/booking-bot/internal/bot/handlers"
 	"github.com/happyinside-dev/booking-bot/internal/config"
 	"github.com/happyinside-dev/booking-bot/internal/database"
@@ -80,11 +82,27 @@ func run() error {
 		businessRepo,
 		memberRepo,
 		log,
+		service.BusinessDefaults{
+			SlotIntervalMin:     cfg.DefaultSlotIntervalMin,
+			MinBookingNoticeMin: cfg.DefaultMinBookingNotice,
+			MaxBookingDays:      cfg.DefaultMaxBookingDays,
+		},
 	)
+	serviceRepo := repository.NewServiceRepository(pgPool)
+	employeeRepo := repository.NewEmployeeRepository(pgPool)
+	scheduleRepo := repository.NewScheduleRepository(pgPool)
+	catalogService := service.NewCatalogService(serviceRepo, businessService)
+	employeeService := service.NewEmployeeService(employeeRepo, businessService)
+	scheduleService := service.NewScheduleService(businessRepo, serviceRepo, employeeRepo, scheduleRepo, businessService)
+	stateStore := fsm.NewRedisStore(redisClient, 30*time.Minute)
 
 	h := handlers.New(
 		userService,
 		businessService,
+		catalogService,
+		employeeService,
+		scheduleService,
+		stateStore,
 		log,
 	)
 	tgBot, err := botapp.New(cfg.BotToken, h, log)

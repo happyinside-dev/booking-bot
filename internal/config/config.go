@@ -2,6 +2,7 @@
 package config
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -11,6 +12,8 @@ import (
 type Config struct {
 	// Telegram
 	BotToken string
+	BotBusinessID int64
+	BotTokens map[string]string
 
 	// Infrastructure
 	DatabaseURL string
@@ -30,6 +33,7 @@ type Config struct {
 // Load reads configuration from environment variables. It returns an error
 // if a required variable is missing or a numeric variable is malformed.
 func Load() (*Config, error) {
+	var err error
 	cfg := &Config{
 		BotToken:    os.Getenv("BOT_TOKEN"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
@@ -37,8 +41,15 @@ func Load() (*Config, error) {
 		AppEnv:      getEnvDefault("APP_ENV", "development"),
 		LogLevel:    getEnvDefault("LOG_LEVEL", "info"),
 	}
-
-	var err error
+	if raw := os.Getenv("BOT_TOKENS"); raw != "" {
+		if err := json.Unmarshal([]byte(raw), &cfg.BotTokens); err != nil {
+			return nil, fmt.Errorf("config: invalid BOT_TOKENS JSON: %w", err)
+		}
+	}
+	if raw := os.Getenv("BOT_BUSINESS_ID"); raw != "" {
+		cfg.BotBusinessID, err = strconv.ParseInt(raw, 10, 64)
+		if err != nil || cfg.BotBusinessID <= 0 { return nil, fmt.Errorf("config: BOT_BUSINESS_ID must be a positive integer") }
+	}
 
 	cfg.DefaultSlotIntervalMin, err = getEnvIntDefault("DEFAULT_SLOT_INTERVAL", 30)
 	if err != nil {
@@ -61,8 +72,8 @@ func Load() (*Config, error) {
 	if cfg.RedisURL == "" {
 		return nil, fmt.Errorf("config: REDIS_URL is required")
 	}
-	if cfg.BotToken == "" {
-		return nil, fmt.Errorf("config: BOT_TOKEN is required")
+	if len(cfg.BotTokens) == 0 && (cfg.BotToken == "" || cfg.BotBusinessID == 0) {
+		return nil, fmt.Errorf("config: BOT_TOKENS or BOT_TOKEN with BOT_BUSINESS_ID is required")
 	}
 
 	return cfg, nil

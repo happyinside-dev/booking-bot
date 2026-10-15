@@ -28,6 +28,18 @@ func New(token string, h *handlers.Handler, log *slog.Logger) (*Bot, error) {
 
 	api.RegisterHandler(bot.HandlerTypeMessageText, "/start", bot.MatchTypeExact, h.Start)
 	api.RegisterHandler(bot.HandlerTypeMessageText, "/admin", bot.MatchTypeExact, h.Admin)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "💈 Услуги", bot.MatchTypeExact, h.ServicesMenu)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "👨‍💼 Сотрудники", bot.MatchTypeExact, h.EmployeesMenu)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "➕ Добавить услугу", bot.MatchTypeExact, h.BeginServiceCreate)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "✏️ Изменить услугу", bot.MatchTypeExact, h.BeginServiceUpdate)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "🔄 Статус услуги", bot.MatchTypeExact, h.BeginServiceStatus)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "➕ Добавить сотрудника", bot.MatchTypeExact, h.BeginEmployeeCreate)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "✏️ Изменить сотрудника", bot.MatchTypeExact, h.BeginEmployeeUpdate)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "🔄 Статус сотрудника", bot.MatchTypeExact, h.BeginEmployeeStatus)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "🕐 Расписание", bot.MatchTypeExact, h.BeginSchedule)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "🚫 Заблокировать время", bot.MatchTypeExact, h.BeginBlocked)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "🔙 Админ меню", bot.MatchTypeExact, h.BackToAdmin)
+	api.RegisterHandler(bot.HandlerTypeMessageText, "❌ Отмена", bot.MatchTypeExact, h.Cancel)
 
 	app.api = api
 	return app, nil
