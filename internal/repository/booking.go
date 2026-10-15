@@ -76,6 +76,14 @@ func (r *BookingRepository) Create(ctx context.Context, p CreateBookingParams) (
 	if err := tx.QueryRow(ctx, q, b.BusinessID, b.EmployeeID, b.ServiceID, b.UserID, b.StartAt, b.EndAt, b.Status, b.Price, b.Comment).Scan(&b.ID, &b.CreatedAt, &b.UpdatedAt); err != nil {
 		return nil, mapBookingWriteError("insert", err)
 	}
+	const notificationQ = `INSERT INTO notifications (booking_id,user_id,type,scheduled_at)
+		SELECT $1,$2,v.type,v.scheduled_at FROM (VALUES
+			('REMINDER_24H'::varchar,$3::timestamptz - interval '24 hours'),
+			('REMINDER_1H'::varchar,$3::timestamptz - interval '1 hour')
+		) AS v(type,scheduled_at) WHERE v.scheduled_at > now()`
+	if _, err := tx.Exec(ctx, notificationQ, b.ID, b.UserID, b.StartAt); err != nil {
+		return nil, fmt.Errorf("repository: create booking notifications: %w", err)
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return nil, mapBookingWriteError("commit", err)
 	}
@@ -135,12 +143,23 @@ func (r *BookingRepository) list(ctx context.Context, businessID int64, conditio
 }
 
 func (r *BookingRepository) Cancel(ctx context.Context, id, userID int64, now time.Time) error {
-	tag, err := r.pool.Exec(ctx, `UPDATE bookings SET status='CANCELLED',updated_at=now() WHERE id=$1 AND user_id=$2 AND start_at>$3 AND status IN ('PENDING','CONFIRMED')`, id, userID, now)
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("repository: begin cancel booking: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	tag, err := tx.Exec(ctx, `UPDATE bookings SET status='CANCELLED',updated_at=$3 WHERE id=$1 AND user_id=$2 AND start_at>$3 AND status IN ('PENDING','CONFIRMED')`, id, userID, now)
 	if err != nil {
 		return fmt.Errorf("repository: cancel booking: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return apperr.ErrBookingAlreadyStarted
+	}
+	if _, err := tx.Exec(ctx, `UPDATE notifications SET status='CANCELLED',locked_until=NULL,updated_at=$2 WHERE booking_id=$1 AND status IN ('PENDING','PROCESSING')`, id, now); err != nil {
+		return fmt.Errorf("repository: cancel notifications: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("repository: commit booking cancellation: %w", err)
 	}
 	return nil
 }

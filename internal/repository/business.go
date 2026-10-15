@@ -87,3 +87,29 @@ func (r *BusinessRepository) GetByID(ctx context.Context, id int64) (*model.Busi
 
 	return &b, nil
 }
+
+func (r *BusinessRepository) SingleBusinessID(ctx context.Context) (int64, error) {
+	rows, err := r.pool.Query(ctx, `SELECT id FROM businesses ORDER BY id LIMIT 2`)
+	if err != nil {
+		return 0, fmt.Errorf("repository: list businesses: %w", err)
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return 0, fmt.Errorf("repository: scan business: %w", err)
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil {
+		return 0, fmt.Errorf("repository: iterate businesses: %w", err)
+	}
+	if len(ids) == 0 {
+		return 0, fmt.Errorf("no businesses configured")
+	}
+	if len(ids) > 1 {
+		return 0, fmt.Errorf("multiple businesses configured: BOT_BUSINESS_ID is required in single-bot mode")
+	}
+	return ids[0], nil
+}

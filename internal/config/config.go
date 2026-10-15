@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
 
 // Config holds all runtime configuration for the application.
@@ -28,6 +29,12 @@ type Config struct {
 	DefaultSlotIntervalMin  int
 	DefaultMinBookingNotice int // minutes
 	DefaultMaxBookingDays   int
+
+	NotificationPollInterval time.Duration
+	NotificationBatchSize    int
+	NotificationLease        time.Duration
+	NotificationMaxAttempts  int
+	NotificationRetryDelay   time.Duration
 }
 
 // Load reads configuration from environment variables. It returns an error
@@ -67,6 +74,29 @@ func Load() (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+	cfg.NotificationPollInterval, err = getEnvDurationDefault("NOTIFICATION_POLL_INTERVAL", 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	cfg.NotificationBatchSize, err = getEnvIntDefault("NOTIFICATION_BATCH_SIZE", 50)
+	if err != nil || cfg.NotificationBatchSize <= 0 {
+		return nil, fmt.Errorf("config: NOTIFICATION_BATCH_SIZE must be positive")
+	}
+	cfg.NotificationLease, err = getEnvDurationDefault("NOTIFICATION_LEASE", time.Minute)
+	if err != nil {
+		return nil, err
+	}
+	cfg.NotificationMaxAttempts, err = getEnvIntDefault("NOTIFICATION_MAX_ATTEMPTS", 5)
+	if err != nil || cfg.NotificationMaxAttempts <= 0 {
+		return nil, fmt.Errorf("config: NOTIFICATION_MAX_ATTEMPTS must be positive")
+	}
+	cfg.NotificationRetryDelay, err = getEnvDurationDefault("NOTIFICATION_RETRY_DELAY", 30*time.Second)
+	if err != nil {
+		return nil, err
+	}
+	if cfg.NotificationPollInterval <= 0 || cfg.NotificationLease <= 0 || cfg.NotificationRetryDelay <= 0 {
+		return nil, fmt.Errorf("config: notification durations must be positive")
+	}
 
 	if cfg.DatabaseURL == "" {
 		return nil, fmt.Errorf("config: DATABASE_URL is required")
@@ -74,11 +104,23 @@ func Load() (*Config, error) {
 	if cfg.RedisURL == "" {
 		return nil, fmt.Errorf("config: REDIS_URL is required")
 	}
-	if len(cfg.BotTokens) == 0 && (cfg.BotToken == "" || cfg.BotBusinessID == 0) {
-		return nil, fmt.Errorf("config: BOT_TOKENS or BOT_TOKEN with BOT_BUSINESS_ID is required")
+	if len(cfg.BotTokens) == 0 && cfg.BotToken == "" {
+		return nil, fmt.Errorf("config: BOT_TOKENS or BOT_TOKEN is required")
 	}
 
 	return cfg, nil
+}
+
+func getEnvDurationDefault(key string, def time.Duration) (time.Duration, error) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return def, nil
+	}
+	value, err := time.ParseDuration(raw)
+	if err != nil {
+		return 0, fmt.Errorf("config: invalid duration for %s: %w", key, err)
+	}
+	return value, nil
 }
 
 func getEnvDefault(key, def string) string {

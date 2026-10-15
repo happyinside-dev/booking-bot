@@ -24,6 +24,7 @@ import (
 	"github.com/happyinside-dev/booking-bot/internal/logger"
 	"github.com/happyinside-dev/booking-bot/internal/repository"
 	"github.com/happyinside-dev/booking-bot/internal/service"
+	"github.com/happyinside-dev/booking-bot/internal/worker"
 )
 
 func main() {
@@ -121,10 +122,18 @@ func run() error {
 			return fmt.Errorf("no active business bots configured")
 		}
 	} else {
-		configured = append(configured, configuredBot{id: cfg.BotBusinessID, businessID: cfg.BotBusinessID, token: cfg.BotToken})
+		businessID := cfg.BotBusinessID
+		if businessID == 0 {
+			businessID, err = businessRepo.SingleBusinessID(ctx)
+			if err != nil {
+				return err
+			}
+		}
+		configured = append(configured, configuredBot{id: businessID, businessID: businessID, token: cfg.BotToken})
 	}
 
 	bots := make([]*botapp.Bot, 0, len(configured))
+	senders := make(worker.StaticSenderRegistry, len(configured))
 	for _, item := range configured {
 		stateStore := fsm.NewRedisStore(redisClient, 30*time.Minute, strconv.FormatInt(item.id, 10))
 		h := handlers.New(
@@ -136,13 +145,20 @@ func run() error {
 			return err
 		}
 		bots = append(bots, tgBot)
+		senders[item.businessID] = tgBot
 	}
+	notificationWorker := worker.NewNotificationWorker(
+		repository.NewNotificationRepository(pgPool), service.NewNotificationService(), senders,
+		worker.NotificationConfig{PollInterval: cfg.NotificationPollInterval, BatchSize: cfg.NotificationBatchSize, Lease: cfg.NotificationLease, MaxAttempts: cfg.NotificationMaxAttempts, RetryDelay: cfg.NotificationRetryDelay}, log,
+	)
 
 	var wg sync.WaitGroup
 	for _, tgBot := range bots {
 		wg.Add(1)
 		go func() { defer wg.Done(); tgBot.Start(ctx) }()
 	}
+	wg.Add(1)
+	go func() { defer wg.Done(); notificationWorker.Run(ctx) }()
 	<-ctx.Done()
 	wg.Wait()
 

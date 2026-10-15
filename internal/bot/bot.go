@@ -59,3 +59,9 @@ func (b *Bot) Start(ctx context.Context) {
 	b.api.Start(ctx)
 	b.log.Info("telegram bot stopped")
 }
+
+func (b *Bot) SendText(ctx context.Context, chatID int64, text string) error {
+	_, err := b.api.SendMessage(ctx, &bot.SendMessageParams{ChatID: chatID, Text: text})
+	if err != nil { return fmt.Errorf("telegram: send message: %w", err) }
+	return nil
+}
